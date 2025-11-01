@@ -1,0 +1,36 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentParameters.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "bastionHosts_Bastion_lab5_name": {
+            "value": null
+        },
+        "loadBalancers_lb_lab05_jrd_name": {
+            "value": null
+        },
+        "virtualMachines_vm1_lab05_jrd_name": {
+            "value": null
+        },
+        "virtualMachines_vm2_lab05_jrd_name": {
+            "value": null
+        },
+        "virtualNetworks_vnet_lab05_jrd_name": {
+            "value": null
+        },
+        "publicIPAddresses_pip_lab05_jrd_name": {
+            "value": null
+        },
+        "networkInterfaces_nic1_lab05_jrd_name": {
+            "value": null
+        },
+        "networkInterfaces_nic2_lab05_jrd_name": {
+            "value": null
+        },
+        "networkSecurityGroups_nsg_lab05_jrd_name": {
+            "value": null
+        },
+        "publicIPAddresses_vnet_lab05_jrd_IPv4_name": {
+            "value": null
+        }
+    }
+}
