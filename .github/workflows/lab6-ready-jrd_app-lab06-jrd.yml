@@ -52,4 +52,4 @@ jobs:
           app-name: 'app-lab06-jrd'
           slot-name: 'Production'
           package: .
-          publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_70F50A9B5AE54FA8B899B1AA40BF1F8E }}
+          publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_17B3AC8B240841A9BBD1D7EBCFBE6870 }}
