@@ -1,0 +1,20 @@
+{
+  "name": "5183-library-app",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "engines": { "node": "22.x" },
+  "scripts": {
+    "start": "node api/server.js",
+    "dev:api": "node --watch api/server.js",
+    "dev:web": "npm run dev --prefix web",
+    "test": "node --test test/*.test.cjs",
+    "smoke": "./scripts/smoke.sh"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "express": "^5.1.0"
+  }
+}

@@ -1,0 +1,216 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.1.0.0",
+  "parameters": {
+    "prefix": { "type": "string", "metadata": { "description": "Short alias, e.g., initials" } },
+    "adminUsername": { "type": "string" },
+    "adminPassword": {
+      "type": "secureString",
+      "metadata": { "description": "Strong password (>=12 chars with upper/lower/number/special)" }
+    },
+    "vmSize": { "type": "string", "defaultValue": "Standard_B1s" },
+    "vnetCidr": { "type": "string", "defaultValue": "10.50.0.0/16" },
+    "appSubnetCidr": { "type": "string", "defaultValue": "10.50.10.0/24" },
+    "bastionSubnetCidr": { "type": "string", "defaultValue": "10.50.255.0/26" }
+  },
+  "variables": {
+    "location": "[resourceGroup().location]",
+    "vnetName": "[format('vnet-lab05-{0}', parameters('prefix'))]",
+    "appSubnetName": "snet-app",
+    "bastionSubnetName": "AzureBastionSubnet",
+    "nsgName": "[format('nsg-lab05-{0}', parameters('prefix'))]",
+    "vm1Name": "[format('vm1-lab05-{0}', parameters('prefix'))]",
+    "vm2Name": "[format('vm2-lab05-{0}', parameters('prefix'))]",
+    "nic1Name": "[format('nic1-lab05-{0}', parameters('prefix'))]",
+    "nic2Name": "[format('nic2-lab05-{0}', parameters('prefix'))]"
+  },
+  "resources": [
+    {
+      "type": "Microsoft.Network/networkSecurityGroups",
+      "apiVersion": "2023-11-01",
+      "name": "[variables('nsgName')]",
+      "location": "[variables('location')]",
+      "properties": {
+        "securityRules": [
+          {
+            "name": "allow-ssh-from-vnet",
+            "properties": {
+              "priority": 100,
+              "access": "Allow",
+              "direction": "Inbound",
+              "protocol": "Tcp",
+              "sourcePortRange": "*",
+              "destinationPortRange": "22",
+              "sourceAddressPrefix": "VirtualNetwork",
+              "destinationAddressPrefix": "*"
+            }
+          },
+          {
+            "name": "allow-http-from-vnet",
+            "properties": {
+              "priority": 110,
+              "access": "Allow",
+              "direction": "Inbound",
+              "protocol": "Tcp",
+              "sourcePortRange": "*",
+              "destinationPortRange": "80",
+              "sourceAddressPrefix": "VirtualNetwork",
+              "destinationAddressPrefix": "*"
+            }
+          },
+          {
+            "name": "allow-probes-from-azureloadbalancer",
+            "properties": {
+              "priority": 120,
+              "access": "Allow",
+              "direction": "Inbound",
+              "protocol": "*",
+              "sourcePortRange": "*",
+              "destinationPortRange": "80",
+              "sourceAddressPrefix": "AzureLoadBalancer",
+              "destinationAddressPrefix": "*"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "type": "Microsoft.Network/virtualNetworks",
+      "apiVersion": "2023-11-01",
+      "name": "[variables('vnetName')]",
+      "location": "[variables('location')]",
+      "properties": {
+        "addressSpace": { "addressPrefixes": [ "[parameters('vnetCidr')]" ] },
+        "subnets": [
+          {
+            "name": "[variables('appSubnetName')]",
+            "properties": {
+              "addressPrefix": "[parameters('appSubnetCidr')]",
+              "networkSecurityGroup": {
+                "id": "[resourceId('Microsoft.Network/networkSecurityGroups', variables('nsgName'))]"
+              }
+            }
+          },
+          {
+            "name": "[variables('bastionSubnetName')]",
+            "properties": {
+              "addressPrefix": "[parameters('bastionSubnetCidr')]"
+            }
+          }
+        ]
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Network/networkSecurityGroups', variables('nsgName'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.Network/networkInterfaces",
+      "apiVersion": "2023-11-01",
+      "name": "[variables('nic1Name')]",
+      "location": "[variables('location')]",
+      "dependsOn": [ "[resourceId('Microsoft.Network/virtualNetworks', variables('vnetName'))]" ],
+      "properties": {
+        "ipConfigurations": [
+          {
+            "name": "ipconfig1",
+            "properties": {
+              "subnet": { "id": "[resourceId('Microsoft.Network/virtualNetworks/subnets', variables('vnetName'), variables('appSubnetName'))]" },
+              "privateIPAllocationMethod": "Dynamic"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "type": "Microsoft.Network/networkInterfaces",
+      "apiVersion": "2023-11-01",
+      "name": "[variables('nic2Name')]",
+      "location": "[variables('location')]",
+      "dependsOn": [ "[resourceId('Microsoft.Network/virtualNetworks', variables('vnetName'))]" ],
+      "properties": {
+        "ipConfigurations": [
+          {
+            "name": "ipconfig1",
+            "properties": {
+              "subnet": { "id": "[resourceId('Microsoft.Network/virtualNetworks/subnets', variables('vnetName'), variables('appSubnetName'))]" },
+              "privateIPAllocationMethod": "Dynamic"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "type": "Microsoft.Compute/virtualMachines",
+      "apiVersion": "2023-09-01",
+      "name": "[variables('vm1Name')]",
+      "location": "[variables('location')]",
+      "dependsOn": [ "[resourceId('Microsoft.Network/networkInterfaces', variables('nic1Name'))]" ],
+      "properties": {
+        "hardwareProfile": { "vmSize": "[parameters('vmSize')]" },
+        "storageProfile": {
+          "imageReference": {
+            "publisher": "Canonical",
+            "offer": "0001-com-ubuntu-server-jammy",
+            "sku": "22_04-lts",
+            "version": "latest"
+          },
+          "osDisk": { "createOption": "FromImage" }
+        },
+        "osProfile": {
+          "computerName": "[variables('vm1Name')]",
+          "adminUsername": "[parameters('adminUsername')]",
+          "adminPassword": "[parameters('adminPassword')]",
+          "linuxConfiguration": {
+            "disablePasswordAuthentication": false,
+            "provisionVMAgent": true
+          }
+        },
+        "networkProfile": {
+          "networkInterfaces": [
+            { "id": "[resourceId('Microsoft.Network/networkInterfaces', variables('nic1Name'))]" }
+          ]
+        }
+      }
+    },
+    {
+      "type": "Microsoft.Compute/virtualMachines",
+      "apiVersion": "2023-09-01",
+      "name": "[variables('vm2Name')]",
+      "location": "[variables('location')]",
+      "dependsOn": [ "[resourceId('Microsoft.Network/networkInterfaces', variables('nic2Name'))]" ],
+      "properties": {
+        "hardwareProfile": { "vmSize": "[parameters('vmSize')]" },
+        "storageProfile": {
+          "imageReference": {
+            "publisher": "Canonical",
+            "offer": "0001-com-ubuntu-server-jammy",
+            "sku": "22_04-lts",
+            "version": "latest"
+          },
+          "osDisk": { "createOption": "FromImage" }
+        },
+        "osProfile": {
+          "computerName": "[variables('vm2Name')]",
+          "adminUsername": "[parameters('adminUsername')]",
+          "adminPassword": "[parameters('adminPassword')]",
+          "linuxConfiguration": {
+            "disablePasswordAuthentication": false,
+            "provisionVMAgent": true
+          }
+        },
+        "networkProfile": {
+          "networkInterfaces": [
+            { "id": "[resourceId('Microsoft.Network/networkInterfaces', variables('nic2Name'))]" }
+          ]
+        }
+      }
+    }
+  ],
+  "outputs": {
+    "vnetName": { "type": "string", "value": "[variables('vnetName')]" },
+    "appSubnet": { "type": "string", "value": "[variables('appSubnetName')]" },
+    "bastionSubnet": { "type": "string", "value": "[variables('bastionSubnetName')]" },
+    "vm1Name": { "type": "string", "value": "[variables('vm1Name')]" },
+    "vm2Name": { "type": "string", "value": "[variables('vm2Name')]" }
+  }
+}
