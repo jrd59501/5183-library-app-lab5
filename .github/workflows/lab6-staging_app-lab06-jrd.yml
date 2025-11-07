@@ -1,4 +1,4 @@
-﻿name: Build and deploy Node.js app to Azure Web App - app-lab06-jrd
+﻿name: Build and deploy Node.js app with React (Vite) frontend to Azure Web App - app-lab06-jrd
 
 on:
   push:
@@ -20,16 +20,21 @@ jobs:
         with:
           node-version: '22.x'
 
+      # Install API dependencies
       - name: Install backend dependencies
-        run: |
-          npm install
+        run: npm ci
 
-      - name: Install frontend dependencies
+      # Build the React frontend
+      - name: Build React app (Vite)
         run: |
-          cd web
-          npm install
-          npm run build
+          npm --prefix web ci
+          npm --prefix web run build
 
+      # Optional: confirm the dist folder exists
+      - name: List Vite build output
+        run: ls -la web/dist
+
+      # Upload everything for deploy step
       - name: Upload artifact for deployment job
         uses: actions/upload-artifact@v4
         with:
@@ -46,11 +51,9 @@ jobs:
         with:
           name: node-app
 
-      - name: Deploy to Azure Web App
-        id: deploy-to-webapp
-        uses: azure/webapps-deploy@v3
+      - name: Deploy to Azure Web App (staging)
+        uses: azure/webapps-deploy@v2
         with:
           app-name: 'app-lab06-jrd'
           slot-name: 'staging'
-          package: .
           publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_STAGING }}
