@@ -20,21 +20,21 @@ jobs:
         with:
           node-version: '22.x'
 
-      # Install API dependencies
+      # Install backend dependencies
       - name: Install backend dependencies
         run: npm ci
 
-      # Build the React frontend
+      # Build the React frontend (Vite)
       - name: Build React app (Vite)
         run: |
           npm --prefix web ci
           npm --prefix web run build
 
-      # Optional: confirm the dist folder exists
+      # Verify Vite build output
       - name: List Vite build output
         run: ls -la web/dist
 
-      # Upload everything for deploy step
+      # Upload build artifact for deploy job
       - name: Upload artifact for deployment job
         uses: actions/upload-artifact@v4
         with:
@@ -46,14 +46,23 @@ jobs:
     needs: build
 
     steps:
+      # Download artifact from build job
       - name: Download artifact from build job
         uses: actions/download-artifact@v4
         with:
           name: node-app
 
+      # Azure Login (required before deploy)
+      - name: Azure Login
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_STAGING }}
+
+      # Deploy to the staging slot
       - name: Deploy to Azure Web App (staging)
         uses: azure/webapps-deploy@v2
         with:
           app-name: 'app-lab06-jrd'
           slot-name: 'staging'
           publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_STAGING }}
+          package: .
